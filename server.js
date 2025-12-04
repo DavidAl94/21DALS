@@ -3,9 +3,10 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(3000, () => console.log("Servidor en http://localhost:3000"));
+// app.listen(PORT, () => {
+//   console.log("Server running on port " + PORT);
+// });
 
 const path = require("path");
 
@@ -62,6 +63,8 @@ app.get("/api/deudas", (req, res) => {
   });
 
   res.json(cuentas);
+  players = [];
+  rounds = [];
 });
 
 // Calcular estado contable en vivo

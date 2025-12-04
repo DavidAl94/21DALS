@@ -103,12 +103,14 @@
     async function calc() {
       const res = await fetch("/api/deudas");
       const cuentas = await res.json();
-
+      // 🔥 CONFIRMACIÓN
+      const ok = confirm("⚠️ ¿Estás seguro de finalizar el juego?\nYa no podrás registrar más rondas.");
+      if (!ok) return; // si cancela, no hace nada
       let txt = "";
       for (const p in cuentas) {
         txt += `${p}: ${cuentas[p]}\n`;
       }
-
+      loadPlayers();
       document.getElementById("resultado").textContent = txt;
     }
 
