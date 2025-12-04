@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>21 Game</title>
+</head>
+
+<body>
+
+  <h2>Participantes</h2>
+
+  <input id="txtName" placeholder="Nombre" />
+  <button onclick="addPlayer()">Agregar</button>
+
+  <p><b>Lista:</b></p>
+  <ul id="listPlayers"></ul>
+
+  <hr>
+
+  <h2>Registrar Ronda</h2>
+
+  Monto: <input id="txtMonto" type="number" value="500" />
+  <br><br>
+
+  Ganador:
+  <select id="selWinner"></select>
+
+  <br><br>
+  <button onclick="addRound()">Registrar Ronda</button>
+
+  <hr>
+  <h3>Resumen Contable en Vivo</h3>
+  <pre id="liveResume"></pre>
+
+
+  <h2>Resumen final</h2>
+  <button onclick="calc()">Calcular Deudas</button>
+
+  <pre id="resultado"></pre>
+
+  <script>
+    async function loadPlayers() {
+      const res = await fetch("/api/players");
+      const players = await res.json();
+
+      const list = document.getElementById("listPlayers");
+      const sel = document.getElementById("selWinner");
+
+      list.innerHTML = "";
+      sel.innerHTML = "";
+
+      players.forEach(p => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+      ${p}
+      <button onclick="deletePlayer('${p}')">❌</button>
+    `;
+
+        list.appendChild(li);
+
+        // 🟢 llenar select
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        sel.appendChild(opt);
+      });
+    }
+
+
+    async function addPlayer() {
+      const name = document.getElementById("txtName").value;
+      if (!name) return;
+
+      await fetch("/api/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
+      });
+
+      document.getElementById("txtName").value = "";
+      loadPlayers();
+    }
+
+    async function addRound() {
+      const amount = parseInt(document.getElementById("txtMonto").value);
+      const winner = document.getElementById("selWinner").value;
+
+      await fetch("/api/rounds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount, winner })
+      });
+
+      //alert("Ronda registrada");
+
+      // 👉 ACTUALIZAR RESUMEN EN VIVO
+      loadResumen();
+    }
+
+
+    async function calc() {
+      const res = await fetch("/api/deudas");
+      const cuentas = await res.json();
+
+      let txt = "";
+      for (const p in cuentas) {
+        txt += `${p}: ${cuentas[p]}\n`;
+      }
+
+      document.getElementById("resultado").textContent = txt;
+    }
+
+    async function loadResumen() {
+      const res = await fetch("/api/resumen");
+      const cuentas = await res.json();
+
+      let txt = "";
+      for (const p in cuentas) {
+        txt += `${p}: ${cuentas[p]}\n`;
+      }
+
+      document.getElementById("liveResume").textContent = txt;
+    }
+
+    async function deletePlayer(name) {
+      if (!confirm(`¿Eliminar a ${name}?`)) return;
+
+      await fetch(`/api/players/${name}`, {
+        method: "DELETE"
+      });
+      loadPlayers();   // actualiza lista y select
+      loadResumen();   // actualiza las cuentas en vivo
+    }
+
+
+
+    loadPlayers();
+    loadResumen();
+  </script>
+
+</body>
+
+</html>
