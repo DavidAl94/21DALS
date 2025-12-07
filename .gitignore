@@ -1,0 +1,56 @@
+# -------------------------
+# Node dependencies
+# -------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -------------------------
+# Environment variables
+# -------------------------
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# -------------------------
+# Logs
+# -------------------------
+logs
+*.log
+logs/*.log
+
+# -------------------------
+# OS generated files
+# -------------------------
+.DS_Store
+Thumbs.db
+
+# -------------------------
+# Build outputs
+# -------------------------
+dist/
+build/
+tmp/
+temp/
+
+# -------------------------
+# Azure specific
+# -------------------------
+# Zip deploy temp files
+.scm/
+.scm-deploy/
+
+# -------------------------
+# Editor folders
+# -------------------------
+.vscode/
+.idea/
+
+# -------------------------
+# Optional: ignore cache files
+# -------------------------
+*.cache
+.cache/
