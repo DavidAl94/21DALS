@@ -7,18 +7,11 @@ trigger:
 - main
 
 variables:
-
-  # Azure Resource Manager connection created during pipeline creation
-  azureSubscription: 'b91b8b28-bb20-4bb7-9409-1911d18ff28d'
-
-  # Web app name
+  azureSubscription: 'Azure subscription 1 (e9dfa8db-8560-4ab4-ae11-0621de36dfdc)'
   webAppName: '21DALS21'
-
-  # Environment name
   environmentName: '21DALS21'
-
-  # Agent VM image name
   vmImageName: 'ubuntu-latest'
+
 
 stages:
 - stage: Build
