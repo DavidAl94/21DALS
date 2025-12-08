@@ -52,4 +52,4 @@ jobs:
           app-name: 'DALS21'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_534118355A6F47C8AE9CB5C1E1834584 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_496B08276D424411B5633F7BAC1335F8 }}
