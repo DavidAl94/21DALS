@@ -8,6 +8,18 @@
 </head>
 
 <body>
+  <h2>Registro con OTP</h2>
+  <input id="txtNameOTP" placeholder="Nombre" />
+  <input id="txtPhone" placeholder="Celular (+57...)" />
+  <button onclick="sendOtp()">Enviar OTP (SMS/WhatsApp)</button>
+  <div id="otpBox" style="display:none; margin-top:10px;">
+    <input id="txtOtp" placeholder="Código OTP" />
+    <button onclick="verifyOtp()">Confirmar OTP</button>
+  </div>
+
+  <hr>
+  <h2>Registrar jugador por código (manual)</h2>
+  <button onclick="openRegisterModal()">Registrar jugador (código)</button>
 
   <h2>Participantes</h2>
 
@@ -21,7 +33,7 @@
 
   <h2>Registrar Ronda</h2>
 
-  Monto: <input id="txtMonto" type="number" value="500" />
+  Monto: <input id="txtMonto" type="number" value="500" step="500" min="500" />
   <br><br>
 
   Ganador:
@@ -39,72 +51,261 @@
   <button onclick="finalize()">Finalizar y mover a histórico</button>
 
   <pre id="resultado"></pre>
+  <div id="registerModal" style="display:none; position:fixed; top:0; left:0;
+width:100%; height:100%; background:rgba(0,0,0,0.5); padding-top:80px;">
+    <div style="background:white; margin:auto; padding:20px; width:320px;">
+      <h3>Registro de jugador</h3>
+      <div id="step1">
+        <p>Ingresa el código:</p>
+        <select id="regCode"></select>
+        <button onclick="checkCode()">Validar</button>
+      </div>
+      <div id="step2" style="display:none;">
+        <p>Jugador existente detectado.</p>
+        <button onclick="addExistingToGame()">Agregar al juego</button>
+
+        <button onclick="editExistingPlayer()">Actualizar jugador</button>
+      </div>
+      <div id="step3" style="display:none;">
+        <p>Actualizar jugador:</p>
+        <input id="regName" placeholder="Nombre"><br><br>
+        <input id="regKey" placeholder="Texto de llave"><br><br>
+        <input id="regImage" placeholder="URL de imagen"><br><br>
+        <button onclick="registerNew()">Registrar</button>
+      </div>
+      <br>
+      <button onclick="closeRegisterModal()">Cerrar</button>
+    </div>
+  </div>
 
   <script>
+    let playersList = [];
+
+    let lastCodeChecked = null;
+    let lastExistingPlayer = null;
+    function editExistingPlayer() {
+      if (!lastExistingPlayer) return;
+
+      // Ocultar step2, mostrar step3
+      document.getElementById("step2").style.display = "none";
+      document.getElementById("step3").style.display = "block";
+
+      // Rellenar los campos con su info actual
+      document.getElementById("regName").value = lastExistingPlayer.name || "";
+      document.getElementById("regKey").value = lastExistingPlayer.keyText || "";
+      document.getElementById("regImage").value = lastExistingPlayer.imageUrl || "";
+
+      // Cambiar el botón de Registrar → Guardar cambios
+      const btn = document.querySelector("#step3 button");
+      btn.textContent = "Guardar cambios";
+      btn.onclick = updateExistingPlayer;
+    }
+    async function updateExistingPlayer() {
+      const name = document.getElementById("regName").value.trim();
+      const keyText = document.getElementById("regKey").value.trim();
+      const imageUrl = document.getElementById("regImage").value.trim();
+
+      if (!lastExistingPlayer) return;
+
+      const body = {
+        id: String(lastExistingPlayer.id),   // aseguramos string
+        phone: lastExistingPlayer.phone,
+        name,
+        keyText,
+        imageUrl
+      };
+
+
+      const res = await fetch('/api/registeredPlayers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        alert("Error guardando los cambios");
+        return;
+      }
+
+      alert("Jugador actualizado correctamente");
+
+      // Cerrar modal
+      closeRegisterModal();
+    }
+
+    function openRegisterModal() {
+      loadRegisteredCodes();
+      document.getElementById('registerModal').style.display = 'block';
+      document.getElementById('step1').style.display = 'block';
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('step3').style.display = 'none';
+    }
+    function closeRegisterModal() {
+      document.getElementById('registerModal').style.display = 'none';
+    }
+
+    async function checkCode() {
+      const code = document.getElementById('regCode').value.trim();
+      if (!code) return alert('Ingresa un código');
+
+      const res = await fetch('/api/registered/' + encodeURIComponent(code));
+
+      if (res.ok) {
+        const player = await res.json();
+        lastExistingPlayer = player;
+        lastCodeChecked = code;
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+      } else {
+        lastExistingPlayer = null;
+        lastCodeChecked = code;
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'none';
+        document.getElementById('step3').style.display = 'block';
+      }
+    }
+
+
+    async function addExistingToGame() {
+      if (!lastExistingPlayer) return;
+      await fetch('/api/players', {
+        method: 'POST', headers: {
+          'Content-Type':
+            'application/json'
+        }, body: JSON.stringify({
+          name:
+            lastExistingPlayer.name
+        })
+      });
+      await loadPlayers();
+      closeRegisterModal();
+    }
+
+    async function registerNew() {
+      const name = document.getElementById('regName').value.trim();
+      const keyText = document.getElementById('regKey').value.trim();
+      const imageUrl = document.getElementById('regImage').value.trim();
+      if (!name) return alert('Nombre requerido');
+      await fetch('/api/register-player', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }
+        , body: JSON.stringify({
+          code: lastCodeChecked,
+          name, keyText, imageUrl
+        })
+      });
+      await fetch('/api/players', {
+        method: 'POST', headers: {
+          'Content-Type':
+            'application/json'
+        }, body: JSON.stringify({ name })
+      });
+      await loadPlayers();
+      closeRegisterModal();
+    }
+    async function sendOtp() {
+      const phone = document.getElementById('txtPhone').value.trim();
+      const name = document.getElementById('txtNameOTP').value.trim();
+      if (!phone) return alert('Ingresa teléfono');
+      const res = await fetch('/auth/send-otp', {
+        method: 'POST', headers: {
+          'Content-Type': 'application/json'
+        }, body: JSON.stringify({ phone })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('otpBox').style.display = 'block';
+        alert('OTP enviado. Revisa SMS o WhatsApp.');
+      } else alert('Error enviando OTP');
+    }
+
+    async function verifyOtp() {
+      const phone = document.getElementById('txtPhone').value.trim();
+      const otp = document.getElementById('txtOtp').value.trim();
+      const name = document.getElementById('txtNameOTP').value.trim();
+      if (!phone || !otp) return alert('Teléfono y OTP requeridos');
+      const res = await fetch('/auth/verify-otp', {
+        method: 'POST', headers: {
+          'Content-Type': 'application/json'
+        }, body: JSON.stringify({
+          phone, otp,
+          name
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        // agregar al juego
+        await fetch('/api/players', {
+          method: 'POST', headers: { 'ContentType': 'application/json' }, body: JSON.stringify({
+            name:
+              data.player.name
+          })
+        });
+        await loadPlayers();
+        document.getElementById('otpBox').style.display = 'none';
+        alert('Número verificado y jugador agregado');
+      } else {
+        alert(data.error || 'OTP inválido');
+      }
+    }
+    // players / rounds / resumen / finalize functions (same logic, adapted ids)
     async function loadPlayers() {
-      const res = await fetch("/api/players");
-      const players = await res.json();
-      const list = document.getElementById("listPlayers");
-      const sel = document.getElementById("selWinner");
+      const res = await fetch('/api/players');
+      //const players = await res.json();
+      playersList = await res.json();
 
-      list.innerHTML = "";
-      sel.innerHTML = "";
-
-      players.forEach(p => {
-        const li = document.createElement("li");
-
-        li.innerHTML = `
-      ${p}
-      <button onclick="deletePlayer('${p}')">❌</button>
-    `;
-
+      const list = document.getElementById('listPlayers');
+      const sel = document.getElementById('selWinner');
+      list.innerHTML = '';
+      sel.innerHTML = '';
+      playersList.forEach(p => {
+        const li = document.createElement('li');
+        li.innerHTML = `${p} <button onclick="deletePlayer('${p}')">X</button>`;
         list.appendChild(li);
-
-        // 🟢 llenar select
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        sel.appendChild(opt);
+        const opt = document.createElement('option'); opt.value = p;
+        opt.textContent = p; sel.appendChild(opt);
       });
     }
 
 
     async function addPlayer() {
-      const name = document.getElementById("txtName").value.trim();
-      if (!name) return alert('Escribe un nombre');;
-
-      await fetch("/api/players", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
+      const name = document.getElementById('txtName').value.trim();
+      if (!name) return alert('Escribe un nombre');
+      11
+      await fetch('/api/players', {
+        method: 'POST', headers: {
+          'Content-Type':
+            'application/json'
+        }, body: JSON.stringify({ name })
       });
-
-      document.getElementById("txtName").value = "";
+      document.getElementById('txtName').value = '';
       await loadPlayers();
       await loadResumen();
     }
     async function deletePlayer(name) {
       if (!confirm('Eliminar ' + name + '?')) return;
-      await fetch('/api/players/' + encodeURIComponent(name), { method: 'DELETE' });
+      await fetch('/api/players/' + encodeURIComponent(name), {
+        method:
+          'DELETE'
+      });
       await loadPlayers();
       await loadResumen();
     }
     async function addRound() {
-      const amount = parseInt(document.getElementById("txtMonto").value);
-      const winner = document.getElementById("selWinner").value;
+      const amount = parseInt(document.getElementById('txtMonto').value);
+      const winner = document.getElementById('selWinner').value;
       if (!winner) return alert('Selecciona ganador');
-      await fetch("/api/rounds", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount, winner })
+      if (!playersList || playersList.length < 2) {
+        alert("Debes tener al menos 2 jugadores para registrar una ronda.");
+        return;
+      }
+      await fetch('/api/rounds', {
+        method: 'POST', headers: {
+          'Content-Type':
+            'application/json'
+        }, body: JSON.stringify({ amount, winner })
       });
-
-      //alert("Ronda registrada");
-
-      // 👉 ACTUALIZAR RESUMEN EN VIVO
       await loadResumen();
     }
-
     async function loadResumen() {
       const res = await fetch('/api/resumen');
       const cuentas = await res.json();
@@ -116,10 +317,30 @@
       if (!confirm('¿Finalizar y mover a histórico?')) return;
       const res = await fetch('/api/finalize', { method: 'POST' });
       const data = await res.json();
-      document.getElementById('resultado').textContent = JSON.stringify(data, null, 2);
+      let html = '';
+      for (const p in data.finalSummary) {
+        const info = data.finalSummary[p];
+        html += `\n<div style="border:1px solid #ccc; padding:10px; marginbottom:10px">\n <h3>${info.name}</h3>\n <p><b>Saldo:</b> ${info.balance}</
+p>\n ${info.keyText ? `<p><b>Llave:</b> ${info.keyText}</p>` : ''}\n ${info.imageUrl ? `<img src="${info.imageUrl}" width="200">` : ''}\n</div>`;
+      }
+      document.getElementById('resultado').innerHTML = html;
       await loadPlayers();
       await loadResumen();
-    } 
+    }
+    async function loadRegisteredCodes() {
+      const res = await fetch('/api/registeredPlayers');
+      const list = await res.json();
+
+      const sel = document.getElementById("regCode");
+      sel.innerHTML = ""; // limpiar
+
+      list.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = `${p.id} - ${p.name}`;
+        sel.appendChild(opt);
+      });
+    }
 
     loadPlayers();
     loadResumen();
